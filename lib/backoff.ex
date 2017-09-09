@@ -10,19 +10,6 @@ defmodule Backoff do
   """
   require Logger
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Backoff.hello
-      :world
-
-  """
-  def hello do
-    :world
-  end
-
   @typedoc """
   Backoff options.
   """
@@ -37,7 +24,7 @@ defmodule Backoff do
       max_retries: 25,
       on_success: fn(res) -> res end,
       on_error: fn(res) -> res end,
-      choose_func: &default_choose_next/2,
+      chooser: &default_chooser/1,
     ]
 
     opts = Keyword.merge(default_opts, opts)
@@ -49,44 +36,68 @@ defmodule Backoff do
   end
 
   def exec({func, args, opts, state}) do
+    debug? = opts[:debug]
     on_success = opts[:on_success]
     on_error = opts[:on_error]
     max_backoff = opts[:max_backoff]
-    choose_next = opts[:choose_func]
+    max_retries = opts[:max_retries]
+    chooser = opts[:chooser]
 
+    do_exec(func, args,
+            debug?,
+            on_success, on_error,
+            max_backoff, max_retries,
+            chooser,
+            state)
+    |> do_result(debug?)
+  end
+
+  defp do_exec(func, args,
+               debug?,
+               on_success, on_error,
+               max_backoff, max_retries,
+               chooser,
+               state) do
     case apply(func, args) do
       {:error, err} -> on_error.({:error, err})
       res -> on_success.(res)
     end
     |> case do
       {:error, err} ->
-        next_wait_ms = min(choose_next.(state, opts), max_backoff)
+        next_wait_ms = min(chooser.(state.backoff), max_backoff)
         Logger.debug([
           inspect(func), " failed: ", inspect(err), ". ",
           "Sleeping for ", to_string(next_wait_ms), " ms"
         ])
         Process.sleep(next_wait_ms)
 
-        if retry?(state, opts) do
-          exec({func, args, opts,
-            %{state |
-              attempts: state.attempts + 1,
-              backoff: next_wait_ms,
-            }})
+        if retry?(state, max_retries) do
+          do_exec(func, args,
+                  debug?,
+                  on_success, on_error,
+                  max_backoff, max_retries,
+                  chooser,
+                  %{state |
+                    attempts: state.attempts + 1,
+                    backoff: next_wait_ms,
+                  })
         else
           Logger.debug([
             "Giving up ", inspect(func),
             " after ", to_string(state.attempts), " attempts.",
           ])
-          {:error, err}
+          {{:error, err}, state}
         end
-      res -> res
+      res -> {res, state}
     end
   end
 
-  defp default_choose_next(%{backoff: backoff}, _opts), do: backoff * 2
+  defp default_chooser(backoff), do: backoff * 2
 
-  defp retry?(%{attempts: attempts}, opts) do
-    attempts < opts[:max_retries]
+  defp retry?(%{attempts: attempts}, max_retries) do
+    attempts < max_retries
   end
+
+  defp do_result({res, _state}, false), do: res
+  defp do_result({res, state}, true), do: {res, state}
 end

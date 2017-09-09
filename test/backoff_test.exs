@@ -18,4 +18,17 @@ defmodule BackoffTest do
 
     assert res == {:error, :ohno}
   end
+
+  test "can override next interval choosing" do
+    {res, state} =
+      Backoff.new(
+        fn -> {:error, :ohno} end, [],
+        max_retries: 5,
+        chooser: fn(_backoff) -> 0 end,
+        debug: true)
+        |> Backoff.exec()
+
+    assert res == {:error, :ohno}
+    assert %{attempts: 5} = state
+  end
 end
