@@ -24,3 +24,8 @@ jobs:
       - run: mix dogma
       - run: mix coveralls.html
       - run: mix dialyzer
+      - save_cache:
+          key: plt-cache
+          paths:
+              - _build/dev/*.plt
+              - _build/dev/*.hash
