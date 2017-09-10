@@ -23,6 +23,9 @@ jobs:
       - run: mix deps.get
       - run: mix dogma
       - run: mix coveralls.html
+      - store_artifacts:
+          path: cover/excoveralls.html
+          destination: coverage.html
       - run: mix dialyzer
       - save_cache:
           key: compile-cache
