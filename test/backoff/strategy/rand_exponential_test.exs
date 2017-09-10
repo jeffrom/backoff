@@ -7,8 +7,7 @@ defmodule Backoff.Strategy.RandExponentialTest do
     {opts, state} = Backoff.new(
       strategy: RandExponential,
       max_backoff: 3000,
-      first_backoff: 100,
-    )
+      first_backoff: 100)
     strategy = RandExponential.init(opts)
     allowed_choices = Enum.take(strategy, 2)
 

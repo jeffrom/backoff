@@ -15,6 +15,7 @@ defmodule Backoff do
     on_success: ((any) -> {:error, any} | any),
     on_error: (({:error, any}) -> {:error, any} | any),
     strategy: module,
+    strategy_opts: map,
   }
 
   @typedoc """
@@ -36,6 +37,7 @@ defmodule Backoff do
       on_success: &default_after/1,
       on_error: &default_after/1,
       strategy: Backoff.Strategy.Exponential,
+      strategy_opts: %{},
     ]
 
     opts =

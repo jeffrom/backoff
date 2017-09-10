@@ -5,7 +5,7 @@ defmodule Backoff.Strategy do
 
   @type state_t :: any
 
-  @callback init(Backoff.opts_t) :: state_t
+  @callback init(Backoff.opts_t) :: state_t | no_return
 
   @callback choose(Backoff.state_t, Backoff.opts_t)
   :: {non_neg_integer, state_t}
