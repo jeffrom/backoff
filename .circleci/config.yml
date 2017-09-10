@@ -17,6 +17,9 @@ jobs:
     steps:
       - checkout
 
+      - restore_cache:
+          keys:
+              - compile-cache
       # specify any bash command here prefixed with `run: `
       - run: mix local.hex --force
       - run: mix local.rebar --force
