@@ -1,3 +1,11 @@
+defmodule BackoffTest.ZeroChooser do
+  @moduledoc false
+
+  def init(_opts), do: nil
+
+  def choose(_, _), do: {0, nil}
+end
+
 defmodule BackoffTest do
   use ExUnit.Case
   doctest Backoff
@@ -23,7 +31,7 @@ defmodule BackoffTest do
     {res, state} =
       [max_retries: 5,
        first_backoff: 500,
-       chooser: fn(_state, _opts) -> 0 end,
+       chooser: BackoffTest.ZeroChooser,
        debug: true]
        |> Backoff.new()
        |> Backoff.run(fn -> {:error, :ohno} end, [])
