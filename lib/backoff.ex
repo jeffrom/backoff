@@ -1,12 +1,6 @@
 defmodule Backoff do
   @moduledoc """
   Documentation for Backoff.
-
-  ```
-  Backoff.new(fn ->
-
-  end)
-  ```
   """
   require Logger
 
@@ -38,13 +32,14 @@ defmodule Backoff do
       first_backoff: 100,
       max_backoff: 3000,
       max_retries: 25,
-      on_success: fn(res) -> res end,
-      on_error: fn(res) -> res end,
+      on_success: &default_after/1,
+      on_error: &default_after/1,
       chooser: &default_chooser/2,
     ]
 
     opts =
-      Keyword.merge(default_opts, opts)
+      default_opts
+      |> Keyword.merge(opts)
       |> Map.new()
 
     {opts, %{
@@ -53,16 +48,17 @@ defmodule Backoff do
     }}
   end
 
+  @spec run({opts_t, state_t}, (... -> any), [any]) :: {:error, any} | any
   def run({opts, state}, func, args \\ []) do
-    do_run(func, args, opts, state)
+    func
+    |> do_run(args, opts, state)
     |> do_result(opts)
   end
 
   defp do_run(func, args, opts, state) do
-    case apply(func, args) do
-      {:error, err} -> opts.on_error.({:error, err})
-      res -> opts.on_success.(res)
-    end
+    func
+    |> apply(args)
+    |> do_afters(opts)
     |> case do
       {:error, err} ->
         next_wait_ms = min(opts.chooser.(state, opts), opts.max_backoff)
@@ -73,11 +69,10 @@ defmodule Backoff do
         Process.sleep(next_wait_ms)
 
         if retry?(state, opts) do
-          do_run(func, args, opts,
-                  %{state |
-                    attempts: state.attempts + 1,
-                    backoff: next_wait_ms,
-                  })
+          do_run(func, args, opts, %{state |
+            attempts: state.attempts + 1,
+            backoff: next_wait_ms,
+          })
         else
           Logger.debug([
             "Giving up ", inspect(func),
@@ -89,7 +84,14 @@ defmodule Backoff do
     end
   end
 
+  defp do_afters({:error, err}, %{on_error: on_error}) do
+    on_error.({:error, err})
+  end
+  defp do_afters(res, %{on_success: on_success}), do: on_success.(res)
+
   defp default_chooser(%{backoff: backoff}, _opts), do: backoff * 2
+
+  defp default_after(res), do: res
 
   defp retry?(%{attempts: attempts}, %{max_retries: max_retries}) do
     attempts < max_retries

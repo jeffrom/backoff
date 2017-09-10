@@ -8,6 +8,7 @@ defmodule Backoff.Mixfile do
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps(),
+     aliases: aliases(),
      test_coverage: [tool: ExCoveralls],
      preferred_cli_env: [
        "coveralls": :test,
@@ -40,6 +41,12 @@ defmodule Backoff.Mixfile do
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.7", only: :test},
       {:dogma, "~> 0.1", only: :dev},
+    ]
+  end
+
+  defp aliases do
+    [
+      # ci: ["dogma", "test", "dialyzer"],
     ]
   end
 end

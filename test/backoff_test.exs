@@ -12,7 +12,8 @@ defmodule BackoffTest do
 
   test "works in error case" do
     res =
-      Backoff.new(max_retries: 5, first_backoff: 0)
+      [max_retries: 5, first_backoff: 0]
+      |> Backoff.new()
       |> Backoff.run(fn -> {:error, :ohno} end, [])
 
     assert res == {:error, :ohno}
@@ -20,12 +21,12 @@ defmodule BackoffTest do
 
   test "can override choosing next interval" do
     {res, state} =
-      Backoff.new(
-        max_retries: 5,
-        first_backoff: 500,
-        chooser: fn(_state, _opts) -> 0 end,
-        debug: true)
-        |> Backoff.run(fn -> {:error, :ohno} end, [])
+      [max_retries: 5,
+       first_backoff: 500,
+       chooser: fn(_state, _opts) -> 0 end,
+       debug: true]
+       |> Backoff.new()
+       |> Backoff.run(fn -> {:error, :ohno} end, [])
 
     assert res == {:error, :ohno}
     assert %{attempts: 5} = state
@@ -33,9 +34,10 @@ defmodule BackoffTest do
 
   test "can override on_success function" do
     res =
-      Backoff.new(first_backoff: 0,
-                  max_retries: 5,
-                  on_success: fn({:ok, :nice}) -> {:error, :cool} end)
+      [first_backoff: 0,
+       max_retries: 5,
+       on_success: fn({:ok, :nice}) -> {:error, :cool} end]
+      |> Backoff.new()
       |> Backoff.run(fn -> {:ok, :nice} end, [])
 
     assert res == {:error, :cool}
@@ -43,9 +45,10 @@ defmodule BackoffTest do
 
   test "can override on_error function" do
     res =
-      Backoff.new(first_backoff: 0,
-                  max_retries: 5,
-                  on_error: fn({:error, :cool}) -> {:ok, :nice} end)
+      [first_backoff: 0,
+       max_retries: 5,
+       on_error: fn({:error, :cool}) -> {:ok, :nice} end]
+      |> Backoff.new()
       |> Backoff.run(fn -> {:error, :cool} end, [])
 
     assert res == {:ok, :nice}
