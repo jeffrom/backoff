@@ -2,7 +2,6 @@ defmodule Backoff.Chooser.Exponential do
   @moduledoc """
   A simple, incremental backoff.
   """
-
   @behaviour Backoff.Chooser
 
   @spec init(Backoff.opts_t) :: Backoff.Chooser.state_t

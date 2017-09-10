@@ -13,7 +13,7 @@ defmodule Backoff do
     max_backoff: non_neg_integer,
     max_retries: non_neg_integer,
     on_success: ((any) -> {:error, any} | any),
-    on_error: ((any) -> {:error, any} | any),
+    on_error: (({:error, any}) -> {:error, any} | any),
     chooser: module,
   }
 
