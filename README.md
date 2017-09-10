@@ -1,5 +1,7 @@
 # Backoff
 
+![badge](https://circleci.com/gh/jeffrom/backoff.png?circle-token=:circle-token)
+
 **TODO: Add description**
 
 ## Installation
