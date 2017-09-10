@@ -25,7 +25,7 @@ jobs:
       - run: mix coveralls.html
       - run: mix dialyzer
       - save_cache:
-          key: plt-cache
+          key: compile-cache
           paths:
-              - _build/dev/*.plt
-              - _build/dev/*.hash
+              - _build
+              - deps
