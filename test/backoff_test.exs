@@ -5,7 +5,7 @@ defmodule BackoffTest do
   test "works in simplest case" do
     res =
       Backoff.new()
-      |> Backoff.exec(fn -> {:ok, :nice} end)
+      |> Backoff.run(fn -> {:ok, :nice} end)
 
     assert res == {:ok, :nice}
   end
@@ -13,7 +13,7 @@ defmodule BackoffTest do
   test "works in error case" do
     res =
       Backoff.new(max_retries: 5, first_backoff: 0)
-      |> Backoff.exec(fn -> {:error, :ohno} end, [])
+      |> Backoff.run(fn -> {:error, :ohno} end, [])
 
     assert res == {:error, :ohno}
   end
@@ -25,7 +25,7 @@ defmodule BackoffTest do
         first_backoff: 500,
         chooser: fn(_state, _opts) -> 0 end,
         debug: true)
-        |> Backoff.exec(fn -> {:error, :ohno} end, [])
+        |> Backoff.run(fn -> {:error, :ohno} end, [])
 
     assert res == {:error, :ohno}
     assert %{attempts: 5} = state
@@ -36,7 +36,7 @@ defmodule BackoffTest do
       Backoff.new(first_backoff: 0,
                   max_retries: 5,
                   on_success: fn({:ok, :nice}) -> {:error, :cool} end)
-      |> Backoff.exec(fn -> {:ok, :nice} end, [])
+      |> Backoff.run(fn -> {:ok, :nice} end, [])
 
     assert res == {:error, :cool}
   end
@@ -46,7 +46,7 @@ defmodule BackoffTest do
       Backoff.new(first_backoff: 0,
                   max_retries: 5,
                   on_error: fn({:error, :cool}) -> {:ok, :nice} end)
-      |> Backoff.exec(fn -> {:error, :cool} end, [])
+      |> Backoff.run(fn -> {:error, :cool} end, [])
 
     assert res == {:ok, :nice}
   end

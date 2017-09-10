@@ -13,8 +13,25 @@ defmodule Backoff do
   @typedoc """
   Backoff options.
   """
-  @type backoff_opts_t :: Keyword.t
+  @type opts_t :: %{
+    debug: boolean,
+    first_backoff: non_neg_integer,
+    max_backoff: non_neg_integer,
+    max_retries: non_neg_integer,
+    on_success: ((any) -> {:error, any} | any),
+    on_error: ((any) -> {:error, any} | any),
+    chooser: ((any, any) -> non_neg_integer),
+  }
 
+  @typedoc """
+  Backoff internal state.
+  """
+  @type state_t :: %{
+    backoff: non_neg_integer,
+    attempts: non_neg_integer,
+  }
+
+  @spec new(Keyword.t) :: {opts_t, state_t}
   def new(opts \\ []) do
     default_opts = [
       debug: false,
@@ -36,12 +53,12 @@ defmodule Backoff do
     }}
   end
 
-  def exec({opts, state}, func, args \\ []) do
-    do_exec(func, args, opts, state)
+  def run({opts, state}, func, args \\ []) do
+    do_run(func, args, opts, state)
     |> do_result(opts)
   end
 
-  defp do_exec(func, args, opts, state) do
+  defp do_run(func, args, opts, state) do
     case apply(func, args) do
       {:error, err} -> opts.on_error.({:error, err})
       res -> opts.on_success.(res)
@@ -56,7 +73,7 @@ defmodule Backoff do
         Process.sleep(next_wait_ms)
 
         if retry?(state, opts) do
-          do_exec(func, args, opts,
+          do_run(func, args, opts,
                   %{state |
                     attempts: state.attempts + 1,
                     backoff: next_wait_ms,
