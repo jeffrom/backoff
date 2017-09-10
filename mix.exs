@@ -39,6 +39,7 @@ defmodule Backoff.Mixfile do
     [
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.7", only: :test},
+      {:dogma, "~> 0.1", only: :dev},
     ]
   end
 end
