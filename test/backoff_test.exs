@@ -1,4 +1,4 @@
-defmodule BackoffTest.ZeroChooser do
+defmodule BackoffTest.ZeroStrategy do
   @moduledoc false
 
   def init(_opts), do: nil
@@ -31,7 +31,7 @@ defmodule BackoffTest do
     {res, state} =
       [max_retries: 5,
        first_backoff: 500,
-       chooser: BackoffTest.ZeroChooser,
+       strategy: BackoffTest.ZeroStrategy,
        debug: true]
        |> Backoff.new()
        |> Backoff.run(fn -> {:error, :ohno} end, [])

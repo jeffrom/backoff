@@ -14,7 +14,7 @@ defmodule Backoff do
     max_retries: non_neg_integer,
     on_success: ((any) -> {:error, any} | any),
     on_error: (({:error, any}) -> {:error, any} | any),
-    chooser: module,
+    strategy: module,
   }
 
   @typedoc """
@@ -23,7 +23,7 @@ defmodule Backoff do
   @type state_t :: %{
     backoff: non_neg_integer,
     attempts: non_neg_integer,
-    chooser_data: Backoff.Chooser.state_t,
+    strategy_data: Backoff.Strategy.state_t,
   }
 
   @spec new(Keyword.t) :: {opts_t, state_t}
@@ -35,7 +35,7 @@ defmodule Backoff do
       max_retries: 25,
       on_success: &default_after/1,
       on_error: &default_after/1,
-      chooser: Backoff.Chooser.Exponential,
+      strategy: Backoff.Strategy.Exponential,
     ]
 
     opts =
@@ -46,7 +46,7 @@ defmodule Backoff do
     {opts, %{
       backoff: opts.first_backoff,
       attempts: 0,
-      chooser_data: opts.chooser.init(opts),
+      strategy_data: opts.strategy.init(opts),
     }}
   end
 
@@ -63,7 +63,7 @@ defmodule Backoff do
     |> do_afters(opts)
     |> case do
       {:error, err} ->
-        {next_backoff, chooser_data} = opts.chooser.choose(state, opts)
+        {next_backoff, strategy_data} = opts.strategy.choose(state, opts)
         next_wait_ms = min(next_backoff, opts.max_backoff)
         Logger.debug([
           inspect(func), " failed: ", inspect(err), ". ",
@@ -75,7 +75,7 @@ defmodule Backoff do
           do_run(func, args, opts, %{state |
             attempts: state.attempts + 1,
             backoff: next_wait_ms,
-            chooser_data: chooser_data
+            strategy_data: strategy_data
           })
         else
           Logger.debug([

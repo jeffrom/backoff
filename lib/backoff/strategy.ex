@@ -1,6 +1,6 @@
-defmodule Backoff.Chooser do
+defmodule Backoff.Strategy do
   @moduledoc """
-  Choosers return the number of milliseconds before the next attempt.
+  Strategies return the number of milliseconds before the next attempt.
   """
 
   @type state_t :: any

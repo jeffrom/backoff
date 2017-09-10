@@ -1,8 +1,8 @@
-defmodule Backoff.Chooser.RandExponential do
+defmodule Backoff.Strategy.RandExponential do
   @moduledoc """
   Randomly chooses an interval within the exponential range.
   """
-  @behaviour Backoff.Chooser
+  @behaviour Backoff.Strategy
 
   @type choices_t :: [non_neg_integer]
 
@@ -12,8 +12,8 @@ defmodule Backoff.Chooser.RandExponential do
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)
-  :: {non_neg_integer, Backoff.Chooser.state_t}
-  def choose(%{chooser_data: choices, attempts: attempts}, _opts) do
+  :: {non_neg_integer, Backoff.Strategy.state_t}
+  def choose(%{strategy_data: choices, attempts: attempts}, _opts) do
     choice =
       choices
       |> Enum.take(max(1, attempts))
