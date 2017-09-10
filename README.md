@@ -1,6 +1,6 @@
 # Backoff
 
-![badge](https://circleci.com/gh/jeffrom/backoff.png?circle-token=:circle-token)
+![shield](https://circleci.com/gh/jeffrom/backoff.svg?style=shield&circle-token=:circle-token)
 
 **TODO: Add description**
 
