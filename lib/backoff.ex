@@ -69,7 +69,7 @@ defmodule Backoff do
     {opts, state}
     |> do_befores()
     |> case do
-      {:error, err} = err_res -> err_res
+      {:error, _err} = err_res -> err_res
       _res -> apply(func, args)
     end
     |> do_afters(opts, state)
