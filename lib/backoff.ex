@@ -25,7 +25,7 @@ defmodule Backoff do
   @type state_t :: %{
     backoff: non_neg_integer,
     attempts: non_neg_integer,
-    strategy_data: Backoff.Strategy.state_t,
+    strategy_data: any,
     meta: meta_t,
   }
 

@@ -12,7 +12,7 @@ defmodule Backoff.Strategy.RandExponential do
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)
-  :: {non_neg_integer, Backoff.Strategy.state_t}
+  :: {non_neg_integer, any}
   def choose(%{strategy_data: choices, attempts: attempts}, _opts) do
     choice =
       choices

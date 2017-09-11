@@ -41,7 +41,7 @@ defmodule Backoff.Strategy.Window do
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)
-  :: {non_neg_integer, Backoff.Strategy.state_t}
+  :: {non_neg_integer, State.t}
   def choose(%{strategy_data: d}, _opts) do
     # %{curr: curr, next: next, value: value} = d
     {0, d}
