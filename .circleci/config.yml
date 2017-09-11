@@ -24,12 +24,13 @@ jobs:
       - run: mix local.hex --force
       - run: mix local.rebar --force
       - run: mix deps.get
+      - run: mix credo --strict
       - run: mix dogma
       - run: mix coveralls.html
       - store_artifacts:
           path: cover/excoveralls.html
           destination: coverage.html
-      - run: mix dialyzer
+      - run: mix dialyzer --halt-exit-status
       - save_cache:
           key: compile-cache
           paths:
