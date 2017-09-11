@@ -48,7 +48,7 @@ defmodule Backoff.Strategy.Window do
   end
 
   def on_response(res, %{strategy_data: %State{value: value} = state}) do
-    {res, %State{state | value: value + 1 }}
+    {res, %State{state | value: value + 1}}
   end
 
   def before(opts, %{strategy_data: %State{} = state}) do

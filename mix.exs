@@ -38,6 +38,7 @@ defmodule Backoff.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+      {:credo, "~> 0.8", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.7", only: :test},
       {:dogma, "~> 0.1", only: :dev},
