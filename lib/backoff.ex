@@ -12,8 +12,9 @@ defmodule Backoff do
     first_backoff: non_neg_integer,
     max_backoff: non_neg_integer,
     max_retries: non_neg_integer,
-    on_success: ((any) -> {:error, any} | any),
-    on_error: (({:error, any}) -> {:error, any} | any),
+    before_request: ((opts_t, state_t) -> {:error, any} | any),
+    on_success: ((any, state_t) -> {{:error, any} | any, meta_t}),
+    on_error: (({:error, any}, state_t) -> {{:error, any} | any, meta_t}),
     strategy: module,
     strategy_opts: map,
   }
@@ -25,7 +26,10 @@ defmodule Backoff do
     backoff: non_neg_integer,
     attempts: non_neg_integer,
     strategy_data: Backoff.Strategy.state_t,
+    meta: meta_t,
   }
+
+  @type meta_t :: map
 
   @spec new(Keyword.t) :: {opts_t, state_t}
   def new(opts \\ []) do
@@ -34,8 +38,9 @@ defmodule Backoff do
       first_backoff: 100,
       max_backoff: 3000,
       max_retries: 25,
-      on_success: &default_after/1,
-      on_error: &default_after/1,
+      before_request: &default_before/2,
+      on_success: &default_after/2,
+      on_error: &default_after/2,
       strategy: Backoff.Strategy.Exponential,
       strategy_opts: %{},
     ]
@@ -49,22 +54,28 @@ defmodule Backoff do
       backoff: opts.first_backoff,
       attempts: 0,
       strategy_data: opts.strategy.init(opts),
+      meta: %{},
     }}
   end
 
   @spec run({opts_t, state_t}, (... -> any), [any]) :: {:error, any} | any
   def run({opts, state}, func, args \\ []) do
-    func
-    |> do_run(args, opts, state)
+    {opts, state}
+    |> do_run(func, args)
     |> do_result(opts)
   end
 
-  defp do_run(func, args, opts, state) do
-    func
-    |> apply(args)
-    |> do_afters(opts)
+  defp do_run({opts, state}, func, args) do
+    {opts, state}
+    |> do_befores()
     |> case do
-      {:error, err} ->
+      {:error, err} = err_res -> err_res
+      _res -> apply(func, args)
+    end
+    |> do_afters(opts, state)
+    |> case do
+      {{:error, err}, new_meta} ->
+        state = update_meta(state, new_meta)
         {next_backoff, strategy_data} = opts.strategy.choose(state, opts)
         next_wait_ms = min(next_backoff, opts.max_backoff)
         Logger.debug([
@@ -74,11 +85,11 @@ defmodule Backoff do
         Process.sleep(next_wait_ms)
 
         if retry?(state, opts) do
-          do_run(func, args, opts, %{state |
+          do_run({opts, %{state |
             attempts: state.attempts + 1,
             backoff: next_wait_ms,
             strategy_data: strategy_data
-          })
+          }}, func, args)
         else
           Logger.debug([
             "Giving up ", inspect(func),
@@ -86,16 +97,26 @@ defmodule Backoff do
           ])
           {{:error, err}, state}
         end
-      res -> {res, state}
+      {res, new_meta} ->
+        {res, update_meta(state, new_meta)}
     end
   end
 
-  defp do_afters({:error, err}, %{on_error: on_error}) do
-    on_error.({:error, err})
+  defp do_befores({opts, state}) do
+    next_state = opts.before_request.(opts, state)
+    {opts, %{state | strategy_data: next_state}}
   end
-  defp do_afters(res, %{on_success: on_success}), do: on_success.(res)
 
-  defp default_after(res), do: res
+  defp do_afters({:error, err}, %{on_error: on_error}, state) do
+    on_error.({:error, err}, state)
+  end
+  defp do_afters(res, %{on_success: on_success}, state) do
+    on_success.(res, state)
+  end
+
+  defp default_before(_opts, _state), do: :ok
+
+  defp default_after(res, _state), do: {res, nil}
 
   defp retry?(%{attempts: attempts}, %{max_retries: max_retries}) do
     attempts < max_retries
@@ -103,4 +124,9 @@ defmodule Backoff do
 
   defp do_result({res, _state}, %{debug: false}), do: res
   defp do_result({res, state}, %{debug: true}), do: {res, state}
+
+  defp update_meta(state, nil), do: state
+  defp update_meta(state, new_meta) do
+    %{state | meta: Map.merge(state.meta, new_meta)}
+  end
 end

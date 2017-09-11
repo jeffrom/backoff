@@ -44,7 +44,7 @@ defmodule BackoffTest do
     res =
       [first_backoff: 0,
        max_retries: 5,
-       on_success: fn({:ok, :nice}) -> {:error, :cool} end]
+       on_success: fn({:ok, :nice}, _s) -> {{:error, :cool}, nil} end]
       |> Backoff.new()
       |> Backoff.run(fn -> {:ok, :nice} end, [])
 
@@ -55,10 +55,38 @@ defmodule BackoffTest do
     res =
       [first_backoff: 0,
        max_retries: 5,
-       on_error: fn({:error, :cool}) -> {:ok, :nice} end]
+       on_error: fn({:error, :cool}, _s) -> {{:ok, :nice}, nil} end]
       |> Backoff.new()
       |> Backoff.run(fn -> {:error, :cool} end, [])
 
     assert res == {:ok, :nice}
+  end
+
+  test "success callback can update meta state" do
+    assert {_res, state} =
+      [debug: true,
+       first_backoff: 0,
+       max_retries: 5,
+       on_success: fn({:ok, :nice}, _state) ->
+         {{:error, :cool}, %{cool: :wow}}
+       end]
+      |> Backoff.new()
+      |> Backoff.run(fn -> {:ok, :nice} end)
+
+    assert %{meta: %{cool: :wow}} = state
+  end
+
+  test "error callback can update meta state" do
+    assert {_res, state} =
+      [debug: true,
+       first_backoff: 0,
+       max_retries: 5,
+       on_error: fn({:error, :cool}, _state) ->
+         {{:ok, :nice}, %{cool: :wow}}
+       end]
+      |> Backoff.new()
+      |> Backoff.run(fn -> {:error, :cool} end)
+
+    assert %{meta: %{cool: :wow}} = state
   end
 end
