@@ -24,6 +24,7 @@ defmodule Backoff do
   """
   @type state_t :: %{
     backoff: non_neg_integer,
+    prev_backoff: non_neg_integer,
     attempts: non_neg_integer,
     strategy_data: any,
     meta: meta_t,
@@ -52,6 +53,7 @@ defmodule Backoff do
 
     {opts, %{
       backoff: opts.first_backoff,
+      prev_backoff: 0,
       attempts: 0,
       strategy_data: opts.strategy.init(opts),
       meta: %{},
@@ -61,11 +63,13 @@ defmodule Backoff do
   @spec run({opts_t, state_t}, (... -> any), [any]) :: {:error, any} | any
   def run({opts, state}, func, args \\ []) do
     {opts, state}
-    |> do_run(func, args)
-    |> do_result(opts)
+    |> one(func, args)
+    |> finish(opts)
   end
 
-  defp do_run({opts, state}, func, args) do
+  @spec one({opts_t, state_t}, (... -> {any, state_t}), [any])
+  :: {any, state_t}
+  def one({opts, state}, func, args) do
     {opts, state}
     |> do_befores()
     |> case do
@@ -76,6 +80,8 @@ defmodule Backoff do
     |> case do
       {{:error, err}, new_meta} ->
         state = update_meta(state, new_meta)
+        %{attempts: attempts, backoff: backoff} = state
+
         {next_backoff, strategy_data} = opts.strategy.choose(state, opts)
         next_wait_ms = min(next_backoff, opts.max_backoff)
         Logger.debug([
@@ -85,15 +91,16 @@ defmodule Backoff do
         Process.sleep(next_wait_ms)
 
         if retry?(state, opts) do
-          do_run({opts, %{state |
-            attempts: state.attempts + 1,
+          one({opts, %{state |
+            attempts: attempts + 1,
+            prev_backoff: backoff,
             backoff: next_wait_ms,
             strategy_data: strategy_data
           }}, func, args)
         else
           Logger.debug([
             "Giving up ", inspect(func),
-            " after ", to_string(state.attempts), " attempts.",
+            " after ", to_string(attempts), " attempts.",
           ])
           {{:error, err}, state}
         end
@@ -101,6 +108,10 @@ defmodule Backoff do
         {res, update_meta(state, new_meta)}
     end
   end
+
+  @spec finish({any, state_t}, opts_t) :: any | {any, state_t}
+  def finish({res, _state}, %{debug: false}), do: res
+  def finish({res, state}, %{debug: true}), do: {res, state}
 
   defp do_befores({opts, state}) do
     next_state = opts.before_request.(opts, state)
@@ -121,9 +132,6 @@ defmodule Backoff do
   defp retry?(%{attempts: attempts}, %{max_retries: max_retries}) do
     attempts < max_retries
   end
-
-  defp do_result({res, _state}, %{debug: false}), do: res
-  defp do_result({res, state}, %{debug: true}), do: {res, state}
 
   defp update_meta(state, nil), do: state
   defp update_meta(state, new_meta) do
