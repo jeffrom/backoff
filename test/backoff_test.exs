@@ -44,7 +44,8 @@ defmodule BackoffTest do
     res =
       [first_backoff: 0,
        max_retries: 5,
-       on_success: fn({:ok, :nice}, _s) -> {{:error, :cool}, nil} end]
+       on_success: fn({:ok, :nice}, _s, _opts) ->
+         {{:error, :cool}, nil} end]
       |> Backoff.new()
       |> Backoff.run(fn -> {:ok, :nice} end, [])
 
@@ -55,7 +56,8 @@ defmodule BackoffTest do
     res =
       [first_backoff: 0,
        max_retries: 5,
-       on_error: fn({:error, :cool}, _s) -> {{:ok, :nice}, nil} end]
+       on_error: fn({:error, :cool}, _s, _opts) ->
+         {{:ok, :nice}, nil} end]
       |> Backoff.new()
       |> Backoff.run(fn -> {:error, :cool} end, [])
 
@@ -67,7 +69,7 @@ defmodule BackoffTest do
       [debug: true,
        first_backoff: 0,
        max_retries: 5,
-       on_success: fn({:ok, :nice}, _state) ->
+       on_success: fn({:ok, :nice}, _state, _opts) ->
          {{:error, :cool}, %{cool: :wow}}
        end]
       |> Backoff.new()
@@ -81,7 +83,7 @@ defmodule BackoffTest do
       [debug: true,
        first_backoff: 0,
        max_retries: 5,
-       on_error: fn({:error, :cool}, _state) ->
+       on_error: fn({:error, :cool}, _state, _opts) ->
          {{:ok, :nice}, %{cool: :wow}}
        end]
       |> Backoff.new()
