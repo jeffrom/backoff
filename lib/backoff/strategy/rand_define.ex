@@ -4,11 +4,17 @@ defmodule Backoff.Strategy.RandDefine do
   """
   @behaviour Backoff.Strategy
 
-  @spec init(Backoff.opts_t) :: any | no_return
+  @type opts_t :: %{
+    values: [non_neg_integer]
+  }
+
+  @spec init(Backoff.opts_t) :: {opts_t, [non_neg_integer]} | no_return
   def init(%{strategy_opts: opts}) do
-    case Map.get(opts, :values) do
-      vals when is_list(vals) -> vals
-    end
+    state =
+      case Map.get(opts, :values) do
+        vals when is_list(vals) -> vals
+      end
+    {opts, state}
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)

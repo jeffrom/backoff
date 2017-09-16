@@ -6,9 +6,9 @@ defmodule Backoff.Strategy.RandExponential do
 
   @type choices_t :: [non_neg_integer]
 
-  @spec init(Backoff.opts_t) :: choices_t
+  @spec init(Backoff.opts_t) :: {map, choices_t}
   def init(%{max_backoff: ceiling, first_backoff: first}) do
-    build_choices([first], ceiling)
+    {%{}, build_choices([first], ceiling)}
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)

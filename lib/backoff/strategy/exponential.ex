@@ -4,8 +4,8 @@ defmodule Backoff.Strategy.Exponential do
   """
   @behaviour Backoff.Strategy
 
-  @spec init(Backoff.opts_t) :: any
-  def init(_opts), do: nil
+  @spec init(Backoff.opts_t) :: {map, any}
+  def init(_opts), do: {%{}, nil}
 
   @spec choose(Backoff.state_t, Backoff.opts_t)
   :: {non_neg_integer, any}

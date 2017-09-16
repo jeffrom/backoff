@@ -1,9 +1,17 @@
 defmodule BackoffTest.ZeroStrategy do
   @moduledoc false
 
-  def init(_opts), do: nil
+  def init(_opts), do: {%{}, nil}
 
   def choose(_, _), do: {0, nil}
+end
+
+defmodule BackoffTest.TestStrategy do
+  @moduledoc false
+
+  def init(%{strategy_opts: %{val: val}}), do: {%{}, %{val: val}}
+
+  def choose(%{strategy_data: %{val: val}}, _), do: {0, %{val: val}}
 end
 
 defmodule BackoffTest do
@@ -38,6 +46,20 @@ defmodule BackoffTest do
 
     assert res == {:error, :ohno}
     assert %{attempts: 5} = state
+  end
+
+  test "can override choosing next interval with options" do
+    {res, state} =
+      [max_retries: 5,
+       first_backoff: 500,
+       strategy: BackoffTest.TestStrategy,
+       strategy_opts: %{val: :niiice},
+       debug: true]
+       |> Backoff.new()
+       |> Backoff.run(fn -> {:error, :ohno} end, [])
+
+    assert res == {:error, :ohno}
+    assert %{strategy_data: %{val: :niiice}} = state
   end
 
   test "can override on_success function" do

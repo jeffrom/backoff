@@ -54,11 +54,13 @@ defmodule Backoff do
       |> Keyword.merge(opts)
       |> Map.new()
 
-    {opts, %{
+    {strategy_opts, strategy_data} = opts.strategy.init(opts)
+
+    {%{opts | strategy_opts: strategy_opts}, %{
       backoff: opts.first_backoff,
       prev_backoff: 0,
       attempts: 0,
-      strategy_data: opts.strategy.init(opts),
+      strategy_data: strategy_data,
       meta: %{},
     }}
   end

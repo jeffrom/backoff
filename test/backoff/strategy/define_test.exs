@@ -8,7 +8,7 @@ defmodule Backoff.Strategy.DefineTest do
     {opts, state} = Backoff.new(
       strategy: Define,
       strategy_opts: %{values: choices})
-    strategy = Define.init(%{strategy_opts: %{values: choices}})
+    {_opts, strategy} = Define.init(%{strategy_opts: %{values: choices}})
 
     for i <- 0..5 do
       {choice, _strat} = Define.choose(%{state |
