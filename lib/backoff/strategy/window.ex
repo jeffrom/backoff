@@ -26,12 +26,13 @@ defmodule Backoff.Strategy.Window do
 
   @spec init(Backoff.opts_t) :: State.t
   def init(%{strategy_opts: opts}) do
-    opts = Map.merge(%{
+    default_opts = %{
       window_size: 60 * 15,
       checker: &default_checker/1,
-    }, opts)
+    }
+    opts = Map.merge(default_opts, opts)
 
-    now = now_ts()
+    now = now_ts(%{strategy_opts: opts})
     %State{
       curr: now,
       next: now + opts.window_size,
@@ -56,11 +57,11 @@ defmodule Backoff.Strategy.Window do
 
   @spec before(Backoff.state_t, Backoff.opts_t) :: State.t
   def before(%{strategy_data: %State{} = state}, opts) do
-    handle_window(state, opts, now_ts())
+    handle_window(state, opts, now_ts(opts))
   end
 
   defp handle_window(%State{next: next, error: :rate_limited} = state,
-                     opts, now)
+                     _opts, now)
   do
     wait_ms = next - now
     if wait_ms > 0 do
@@ -70,7 +71,9 @@ defmodule Backoff.Strategy.Window do
 
     %State{state | error: nil}
   end
-  defp handle_window(%{next: next} = state, opts, now) when now >= next do
+  defp handle_window(%{next: next} = state, %{strategy_opts: opts}, now)
+  when now >= next
+  do
     %State{state |
       curr: next,
       next: next + opts.window_size,
@@ -84,9 +87,8 @@ defmodule Backoff.Strategy.Window do
     state
   end
 
-  defp now_ts do
-    DateTime.utc_now() |> DateTime.to_unix()
-  end
+  defp now_ts(%{strategy_opts: %{__now: now}}), do: now
+  defp now_ts(_opts), do: DateTime.utc_now() |> DateTime.to_unix()
 
   defp default_checker({:ok, %{status_code: status}}) when status == 429 do
     {:error, :rate_limited}

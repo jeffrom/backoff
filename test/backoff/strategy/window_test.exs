@@ -12,4 +12,26 @@ defmodule Backoff.Strategy.WindowTest do
     {_res, final_state} = Window.on_response(true, %{strategy_data: next_state})
     assert %{value: 2} = final_state
   end
+
+  test "resets the window" do
+    now = 1_500_500_000
+    opts = %{strategy_opts: %{
+      __now: now,
+      window_size: 100,
+    }}
+    strat = Window.init(opts)
+
+    opts = %{strategy_opts: %{
+      __now: now + 150,
+      window_size: 100,
+    }}
+    next_state = Window.before(%{strategy_data:
+      %{strat | value: 10}}, opts)
+
+    assert %{
+      value: 0,
+      curr: 1_500_500_100,
+      next: 1_500_500_200,
+    } = next_state
+  end
 end
