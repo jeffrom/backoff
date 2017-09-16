@@ -12,7 +12,8 @@ defmodule Backoff.Strategy.Window do
                value: 0,
                error: nil,
                limit: 0,
-               remaining: 0]
+               remaining: 0,
+               backoff_data: nil]
 
     @type t :: %__MODULE__{
       curr: non_neg_integer,
@@ -21,11 +22,12 @@ defmodule Backoff.Strategy.Window do
       error: any,
       limit: non_neg_integer | nil,
       remaining: non_neg_integer | nil,
+      backoff_data: any,
     }
   end
 
   @spec init(Backoff.opts_t) :: State.t
-  def init(%{strategy_opts: opts}) do
+  def init(%{strategy_opts: opts} = global_opts) do
     default_opts = %{
       window_size: 60 * 15,
       checker: &default_checker/1,
@@ -42,6 +44,8 @@ defmodule Backoff.Strategy.Window do
       error: nil,
       limit: nil,
       remaining: nil,
+      backoff_data: opts.backoff.init(
+        Map.put(global_opts, :strategy_opts, opts.backoff_opts)),
     }
   end
 
@@ -50,7 +54,15 @@ defmodule Backoff.Strategy.Window do
   def choose(state, %{strategy_opts: %{backoff: strategy}} = opts)
   when is_atom(strategy)
   do
-    strategy.choose(state, opts)
+    {ms, next_state} = strategy.choose(
+      %{state | strategy_data: state.strategy_data.backoff_data},
+      %{opts | strategy_opts: opts.strategy_opts.backoff_opts})
+
+    strategy_data = state.strategy_data
+    final_state = %{state |
+      strategy_data: %{strategy_data | backoff_data: next_state},
+    }
+    {ms, final_state}
   end
   def choose(%{strategy_data: d}, _opts), do: {0, d}
 
@@ -65,30 +77,35 @@ defmodule Backoff.Strategy.Window do
   end
 
   defp handle_window(%State{next: next, error: :rate_limited} = state,
-                     _opts, now)
+                     opts, now)
   do
     wait_ms = next - now
+    Logger.debug(["Rate limit hit. waiting ", to_string(wait_ms), " ms"])
     if wait_ms > 0 do
-      Logger.debug(["Rate limit hit. waiting ", to_string(wait_ms), " ms"])
       Process.sleep(wait_ms)
     end
 
-    %State{state | error: nil}
+    next_window(state, next, opts.strategy_opts)
+    # %State{state | error: nil}
   end
   defp handle_window(%{next: next} = state, %{strategy_opts: opts}, now)
   when now >= next
   do
+    next_window(state, next, opts)
+  end
+  defp handle_window(state, _opts, _now) do
+    state
+  end
+
+  defp next_window(state, next, %{window_size: window_size}) do
     %State{state |
       curr: next,
-      next: next + opts.window_size,
+      next: next + window_size,
       value: 0,
       error: nil,
       limit: nil,
       remaining: nil,
     }
-  end
-  defp handle_window(state, _opts, _now) do
-    state
   end
 
   defp now_ts(%{strategy_opts: %{__now: now}}), do: now
