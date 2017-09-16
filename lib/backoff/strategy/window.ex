@@ -29,6 +29,8 @@ defmodule Backoff.Strategy.Window do
     default_opts = %{
       window_size: 60 * 15,
       checker: &default_checker/1,
+      backoff: Backoff.Strategy.Exponential,
+      backoff_opts: %{},
     }
     opts = Map.merge(default_opts, opts)
 
@@ -45,10 +47,12 @@ defmodule Backoff.Strategy.Window do
 
   @spec choose(Backoff.state_t, Backoff.opts_t)
   :: {non_neg_integer, State.t}
-  def choose(%{strategy_data: d}, _opts) do
-    # %{curr: curr, next: next, value: value} = d
-    {0, d}
+  def choose(state, %{strategy_opts: %{backoff: strategy}} = opts)
+  when is_atom(strategy)
+  do
+    strategy.choose(state, opts)
   end
+  def choose(%{strategy_data: d}, _opts), do: {0, d}
 
   @spec on_response(any, Backoff.state_t) :: {any, State.t}
   def on_response(res, %{strategy_data: %State{value: value} = state}) do

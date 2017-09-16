@@ -32,6 +32,13 @@ defmodule Backoff.Strategy.WindowTest do
       value: 0,
       curr: 1_500_500_100,
       next: 1_500_500_200,
+      error: nil,
+      limit: nil,
+      remaining: nil,
     } = next_state
+  end
+
+  test "resets rate limiting errors" do
+
   end
 end
