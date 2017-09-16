@@ -26,6 +26,13 @@ defmodule Backoff.Strategy.Window do
     }
   end
 
+  @type opts_t :: %{
+    window_size: non_neg_integer,
+    checker: ((any, Backoff.state_t, Backoff.opts_t) -> {any, State.t}),
+    backoff: module,
+    backoff_opts: map,
+  }
+
   @spec init(Backoff.opts_t) :: {map, State.t}
   def init(%{strategy_opts: opts} = global_opts) do
     default_opts = %{
@@ -36,12 +43,11 @@ defmodule Backoff.Strategy.Window do
     }
     opts = Map.merge(default_opts, opts)
 
-    # {backoff_opts, backoff_data} = opts.backoff.init(%{strategy_opts: %{}})
     {backoff_opts, backoff_data} = opts.backoff.init(
       Map.put(global_opts, :strategy_opts, opts.backoff_opts))
 
     now = now_ts(%{strategy_opts: opts})
-    {opts, %State{
+    {%{opts | backoff_opts: backoff_opts}, %State{
       curr: now,
       next: now + opts.window_size,
       value: 0,
@@ -75,9 +81,9 @@ defmodule Backoff.Strategy.Window do
                   %{strategy_opts: %{checker: checker}} = opts)
   do
     case checker.(res, state, opts) do
-      {:error, err} ->
-        {{:error, err}, %State{state | value: value + 1, error: err}}
-      res -> {res, %State{state | value: value + 1}}
+      {{:error, err}, next_state} ->
+        {{:error, err}, %State{next_state | value: value + 1, error: err}}
+      {res, next_state} -> {res, %State{next_state | value: value + 1}}
     end
   end
 
@@ -118,10 +124,10 @@ defmodule Backoff.Strategy.Window do
   defp now_ts(%{strategy_opts: %{__now: now}}), do: now
   defp now_ts(_opts), do: DateTime.utc_now() |> DateTime.to_unix()
 
-  defp default_checker({:ok, %{status_code: status}}, _state, _opts)
+  defp default_checker({:ok, %{status_code: status}}, state, _opts)
   when status == 429 do
-    {:error, :rate_limited}
+    {{:error, :rate_limited}, state}
   end
-  defp default_checker({:error, err}, _state, _opts), do: {:error, err}
-  defp default_checker(res, _state, _opts), do: res
+  defp default_checker({:error, err}, state, _opts), do: {{:error, err}, state}
+  defp default_checker(res, state, _opts), do: {res, state}
 end

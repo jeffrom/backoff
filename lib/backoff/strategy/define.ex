@@ -4,7 +4,11 @@ defmodule Backoff.Strategy.Define do
   """
   @behaviour Backoff.Strategy
 
-  @spec init(Backoff.opts_t) :: {map, any} | no_return
+  @type opts_t :: %{
+    values: [non_neg_integer]
+  }
+
+  @spec init(Backoff.opts_t) :: {opts_t, any} | no_return
   def init(%{strategy_opts: opts}) do
     vals =
       case Map.get(opts, :values) do
