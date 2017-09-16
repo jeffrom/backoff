@@ -13,7 +13,7 @@ defmodule Backoff do
     max_backoff: non_neg_integer,
     max_retries: non_neg_integer,
     before_request: ((state_t, opts_t) ->
-                      {:error, any} | any),
+                      {{:error, any} | any, meta_t}),
     on_success: ((any, state_t, opts_t) ->
                   {{:error, any} | any, meta_t}),
     on_error: (({:error, any}, state_t, opts_t) ->
@@ -78,11 +78,12 @@ defmodule Backoff do
     {opts, state}
     |> do_befores()
     |> case do
-      {:error, _err} = err_res -> err_res
+      {{:error, _err} = err_res, _s} -> {:done, err_res}
       _res -> apply(func, args)
     end
     |> do_afters(opts, state)
     |> case do
+      {{:done, res}, new_meta} -> {res, new_meta}
       {{:error, err}, new_meta} ->
         state = update_meta(state, new_meta)
         %{attempts: attempts, backoff: backoff} = state
@@ -119,10 +120,13 @@ defmodule Backoff do
   def finish({res, state}, %{debug: true}), do: {res, state}
 
   defp do_befores({opts, state}) do
-    next_state = opts.before_request.(opts, state)
-    {opts, %{state | strategy_data: next_state}}
+    {res, next_state} = opts.before_request.(state, opts)
+    {res, %{state | strategy_data: next_state}}
   end
 
+  defp do_afters({:done, _} = res, opts, state) do
+    {res, state.meta}
+  end
   defp do_afters({:error, err}, %{on_error: on_error} = opts, state) do
     on_error.({:error, err}, state, opts)
   end
@@ -130,9 +134,9 @@ defmodule Backoff do
     on_success.(res, state, opts)
   end
 
-  defp default_before(_state, _opts), do: :ok
+  defp default_before(state, _opts), do: {:ok, state}
 
-  defp default_after(res, _state, _opts), do: {res, nil}
+  defp default_after(res, state, _opts), do: {res, state.meta}
 
   defp retry?(%{attempts: attempts}, %{max_retries: max_retries}) do
     attempts < max_retries

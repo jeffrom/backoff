@@ -113,4 +113,14 @@ defmodule BackoffTest do
 
     assert %{meta: %{cool: :wow}} = state
   end
+
+  test "doesn't apply if the before callback returns an error" do
+    assert {{:error, :nice}, _state} =
+      [debug: true,
+       first_backoff: 0,
+       max_retries: 5,
+       before_request: fn(s, _o) -> {{:error, :nice}, s} end]
+       |> Backoff.new()
+       |> Backoff.run(fn -> {:ok, :cool} end)
+  end
 end

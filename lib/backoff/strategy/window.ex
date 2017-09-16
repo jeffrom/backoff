@@ -87,7 +87,7 @@ defmodule Backoff.Strategy.Window do
     end
   end
 
-  @spec before(Backoff.state_t, Backoff.opts_t) :: State.t
+  @spec before(Backoff.state_t, Backoff.opts_t) :: {any, State.t}
   def before(%{strategy_data: %State{} = state}, opts) do
     handle_window(state, opts, now_ts(opts))
   end
@@ -99,15 +99,15 @@ defmodule Backoff.Strategy.Window do
     Logger.debug(["Rate limit hit. waiting ", to_string(wait_ms), " ms"])
     Process.sleep(max(wait_ms, 0))
 
-    next_window(state, next, opts.strategy_opts)
+    {:ok, next_window(state, next, opts.strategy_opts)}
   end
   defp handle_window(%{next: next} = state, %{strategy_opts: opts}, now)
   when now >= next
   do
-    next_window(state, next, opts)
+    {:ok, next_window(state, next, opts)}
   end
   defp handle_window(state, _opts, _now) do
-    state
+    {:ok, state}
   end
 
   defp next_window(state, next, %{window_size: window_size}) do

@@ -36,7 +36,7 @@ defmodule Backoff.Strategy.WindowTest do
       __now: now + 150,
       window_size: 100,
     }}
-    next_state = Window.before(%{strategy_data:
+    assert {:ok, next_state} = Window.before(%{strategy_data:
       %{strat | value: 10}}, opts)
 
     assert %{
@@ -61,7 +61,7 @@ defmodule Backoff.Strategy.WindowTest do
       __now: now + 100,
       window_size: 100,
     }}
-    next_state = Window.before(%{
+    {_, next_state} = Window.before(%{
       strategy_data: %{strat | error: :rate_limited}},
       opts)
 
@@ -70,6 +70,23 @@ defmodule Backoff.Strategy.WindowTest do
       curr: 1_500_500_100,
       next: 1_500_500_200,
     } = next_state
+  end
+
+  test "allows through requests when not rate limited" do
+    now = 1_500_500_000
+    opts = %{strategy_opts: %{
+      __now: now,
+      window_size: 100,
+    }}
+    {_, strat} = Window.init(opts)
+
+    opts = %{strategy_opts: %{
+      __now: now + 10,
+      window_size: 100,
+    }}
+    {_, next_state} = Window.before(%{strategy_data: strat}, opts)
+
+    assert %{curr: 1_500_500_000} = next_state
   end
 
   test "can override backoff strategy" do
@@ -85,7 +102,22 @@ defmodule Backoff.Strategy.WindowTest do
         backoff_data: %{val: :siiick}}} = next_state
   end
 
-  test "detects rate limit" do
+  test "default checker detects rate limit" do
+    {strategy_opts, strat} = Window.init(%{strategy_opts: %{}})
+    opts = %{strategy_opts: strategy_opts}
 
+    {_res, next_state} = Window.on_response(
+      {:ok, %{status_code: 429}}, %{strategy_data: strat}, opts)
+    assert %{error: :rate_limited} = next_state
+  end
+
+  test "default checker returns results in normal case" do
+    {strategy_opts, strat} = Window.init(%{strategy_opts: %{}})
+    opts = %{strategy_opts: strategy_opts}
+
+    {res, _next_state} = Window.on_response(
+      {:ok, :cool}, %{strategy_data: strat}, opts)
+
+    assert {:ok, :cool} = res
   end
 end
