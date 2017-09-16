@@ -8,7 +8,8 @@ defmodule Backoff.Strategy.RandDefineTest do
     {opts, state} = Backoff.new(
       strategy: RandDefine,
       strategy_opts: %{values: choices})
-    strategy = RandDefine.init(%{strategy_opts: %{values: choices}})
+
+    {_strategy_opts, strategy} = RandDefine.init(opts)
 
     for i <- 0..50 do
       {choice, _strat} = RandDefine.choose(%{state |

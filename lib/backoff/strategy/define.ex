@@ -4,11 +4,13 @@ defmodule Backoff.Strategy.Define do
   """
   @behaviour Backoff.Strategy
 
-  @spec init(Backoff.opts_t) :: any | no_return
+  @spec init(Backoff.opts_t) :: {map, any} | no_return
   def init(%{strategy_opts: opts}) do
-    case Map.get(opts, :values) do
-      vals when is_list(vals) -> vals
-    end
+    vals =
+      case Map.get(opts, :values) do
+        vals when is_list(vals) -> vals
+      end
+    {opts, vals}
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)

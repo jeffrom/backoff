@@ -1,7 +1,7 @@
 defmodule BackoffTest.ZeroStrategy do
   @moduledoc false
 
-  def init(_opts), do: nil
+  def init(_opts), do: {%{}, nil}
 
   def choose(_, _), do: {0, nil}
 end
@@ -9,7 +9,7 @@ end
 defmodule BackoffTest.TestStrategy do
   @moduledoc false
 
-  def init(%{strategy_opts: %{val: val}}), do: %{val: val}
+  def init(%{strategy_opts: %{val: val}}), do: {%{}, %{val: val}}
 
   def choose(%{strategy_data: %{val: val}}, _), do: {0, %{val: val}}
 end

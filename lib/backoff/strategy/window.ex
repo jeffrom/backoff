@@ -26,27 +26,30 @@ defmodule Backoff.Strategy.Window do
     }
   end
 
-  @spec init(Backoff.opts_t) :: State.t
+  @spec init(Backoff.opts_t) :: {map, State.t}
   def init(%{strategy_opts: opts} = global_opts) do
     default_opts = %{
       window_size: 60 * 15,
-      checker: &default_checker/1,
+      checker: &default_checker/3,
       backoff: Backoff.Strategy.Exponential,
       backoff_opts: %{},
     }
     opts = Map.merge(default_opts, opts)
 
+    # {backoff_opts, backoff_data} = opts.backoff.init(%{strategy_opts: %{}})
+    {backoff_opts, backoff_data} = opts.backoff.init(
+      Map.put(global_opts, :strategy_opts, opts.backoff_opts))
+
     now = now_ts(%{strategy_opts: opts})
-    %State{
+    {opts, %State{
       curr: now,
       next: now + opts.window_size,
       value: 0,
       error: nil,
       limit: nil,
       remaining: nil,
-      backoff_data: opts.backoff.init(
-        Map.put(global_opts, :strategy_opts, opts.backoff_opts)),
-    }
+      backoff_data: backoff_data,
+    }}
   end
 
   @spec choose(Backoff.state_t, Backoff.opts_t)
@@ -66,9 +69,16 @@ defmodule Backoff.Strategy.Window do
   end
   def choose(%{strategy_data: d}, _opts), do: {0, d}
 
-  @spec on_response(any, Backoff.state_t) :: {any, State.t}
-  def on_response(res, %{strategy_data: %State{value: value} = state}) do
-    {res, %State{state | value: value + 1}}
+  @spec on_response(any, Backoff.state_t, Backoff.opts_t) :: {any, State.t}
+  def on_response(res,
+                  %{strategy_data: %State{value: value} = state},
+                  %{strategy_opts: %{checker: checker}} = opts)
+  do
+    case checker.(res, state, opts) do
+      {:error, err} ->
+        {{:error, err}, %State{state | value: value + 1, error: err}}
+      res -> {res, %State{state | value: value + 1}}
+    end
   end
 
   @spec before(Backoff.state_t, Backoff.opts_t) :: State.t
@@ -81,12 +91,9 @@ defmodule Backoff.Strategy.Window do
   do
     wait_ms = next - now
     Logger.debug(["Rate limit hit. waiting ", to_string(wait_ms), " ms"])
-    if wait_ms > 0 do
-      Process.sleep(wait_ms)
-    end
+    Process.sleep(max(wait_ms, 0))
 
     next_window(state, next, opts.strategy_opts)
-    # %State{state | error: nil}
   end
   defp handle_window(%{next: next} = state, %{strategy_opts: opts}, now)
   when now >= next
@@ -111,9 +118,10 @@ defmodule Backoff.Strategy.Window do
   defp now_ts(%{strategy_opts: %{__now: now}}), do: now
   defp now_ts(_opts), do: DateTime.utc_now() |> DateTime.to_unix()
 
-  defp default_checker({:ok, %{status_code: status}}) when status == 429 do
+  defp default_checker({:ok, %{status_code: status}}, _state, _opts)
+  when status == 429 do
     {:error, :rate_limited}
   end
-  defp default_checker({:error, err}), do: {:error, err}
-  defp default_checker(res), do: res
+  defp default_checker({:error, err}, _state, _opts), do: {:error, err}
+  defp default_checker(res, _state, _opts), do: res
 end

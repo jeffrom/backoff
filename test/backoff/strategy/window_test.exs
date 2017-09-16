@@ -1,7 +1,7 @@
 defmodule Backoff.Strategy.WindowTest.TestBackoff do
   @moduledoc false
 
-  def init(%{strategy_opts: %{val: val}}), do: %{val: val}
+  def init(%{strategy_opts: %{val: val}}), do: {%{}, %{val: val}}
 
   def choose(%{strategy_data: %{val: val}}, _), do: {0, %{val: val}}
 end
@@ -13,12 +13,14 @@ defmodule Backoff.Strategy.WindowTest do
   alias Backoff.Strategy.Window
 
   test "increments its counter on response" do
-    strat = Window.init(%{strategy_opts: %{}})
+    {strategy_opts, strat} = Window.init(%{strategy_opts: %{}})
+    opts = %{strategy_opts: strategy_opts}
 
-    {_res, next_state} = Window.on_response(true, %{strategy_data: strat})
+    {_res, next_state} = Window.on_response(true, %{strategy_data: strat}, opts)
     assert %{value: 1} = next_state
 
-    {_res, final_state} = Window.on_response(true, %{strategy_data: next_state})
+    {_res, final_state} = Window.on_response(
+      true, %{strategy_data: next_state}, opts)
     assert %{value: 2} = final_state
   end
 
@@ -28,7 +30,7 @@ defmodule Backoff.Strategy.WindowTest do
       __now: now,
       window_size: 100,
     }}
-    strat = Window.init(opts)
+    {_, strat} = Window.init(opts)
 
     opts = %{strategy_opts: %{
       __now: now + 150,
@@ -53,7 +55,7 @@ defmodule Backoff.Strategy.WindowTest do
       __now: now,
       window_size: 100,
     }}
-    strat = Window.init(opts)
+    {_, strat} = Window.init(opts)
 
     opts = %{strategy_opts: %{
       __now: now + 100,
@@ -75,11 +77,15 @@ defmodule Backoff.Strategy.WindowTest do
       backoff: Backoff.Strategy.WindowTest.TestBackoff,
       backoff_opts: %{val: :siiick},
     }}
-    strat = Window.init(opts)
+    {_, strat} = Window.init(opts)
 
     {0, next_state} = Window.choose(%{strategy_data: strat}, opts)
     assert %{
       strategy_data: %{
         backoff_data: %{val: :siiick}}} = next_state
+  end
+
+  test "detects rate limit" do
+
   end
 end
