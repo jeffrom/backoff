@@ -124,7 +124,7 @@ defmodule Backoff do
     {res, %{state | strategy_data: next_state}}
   end
 
-  defp do_afters({:done, _} = res, opts, state) do
+  defp do_afters({:done, _} = res, _opts, state) do
     {res, state.meta}
   end
   defp do_afters({:error, err}, %{on_error: on_error} = opts, state) do
