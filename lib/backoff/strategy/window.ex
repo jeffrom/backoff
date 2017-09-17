@@ -3,6 +3,7 @@ defmodule Backoff.Strategy.Window do
   A backoff that respects rate limits within time windows.
   """
   require Logger
+
   @behaviour Backoff.Strategy
 
   defmodule State do

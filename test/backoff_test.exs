@@ -35,7 +35,7 @@ defmodule BackoffTest do
     assert res == {:error, :ohno}
   end
 
-  test "can override choosing next interval" do
+  test "can override choosing next wait interval" do
     {res, state} =
       [max_retries: 5,
        first_backoff: 500,
