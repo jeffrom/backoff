@@ -67,11 +67,11 @@ defmodule Backoff do
   def run({opts, state}, func, args \\ []) do
     {Map.put(opts, :single, false), state}
     |> one(func, args)
-    |> finish(opts)
+    |> finish()
   end
 
   @spec one({opts_t, state_t}, (... -> any), [any])
-  :: {any, state_t}
+  :: {any, {opts_t, state_t}}
   def one({opts, state}, func, args \\ []) do
     {opts, state}
     |> do_befores()
@@ -81,7 +81,7 @@ defmodule Backoff do
     end
     |> do_afters(opts, state)
     |> case do
-      {{:done, res}, new_meta} -> {res, new_meta}
+      {{:done, res}, new_meta} -> {res, {opts, update_meta(state, new_meta)}}
       {{:error, err}, new_meta} ->
         state = update_meta(state, new_meta)
         %{attempts: attempts} = state
@@ -102,17 +102,17 @@ defmodule Backoff do
             "Giving up ", inspect(func),
             " after ", to_string(attempts), " attempts.",
           ])
-          {{:error, err}, ns}
+          {{:error, err}, {opts, ns}}
         end
       {res, new_meta} ->
-        {res, update_meta(state, new_meta)}
+        {res, {opts, update_meta(state, new_meta)}}
     end
   end
 
-  @spec finish({any, state_t}, opts_t) :: any | {any, state_t}
-  def finish({res, state}, %{debug: true}), do: {res, state}
-  def finish({res, state}, %{single: true}), do: {res, state}
-  def finish({res, _state}, %{debug: false}), do: res
+  @spec finish({any, {opts_t, state_t}}) :: any | {any, {opts_t, state_t}}
+  def finish({res, {%{debug: true} = opts, state}}), do: {res, {opts, state}}
+  def finish({res, {%{single: true} = opts, state}}), do: {res, {opts, state}}
+  def finish({res, {%{debug: false}, _state}}), do: res
 
   defp handle_sleep(next_wait_ms, %{single: false}) do
     Process.sleep(next_wait_ms)

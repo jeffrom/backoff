@@ -36,7 +36,7 @@ defmodule BackoffTest do
   end
 
   test "can override choosing next wait interval" do
-    {res, state} =
+    {res, {_opts, state}} =
       [max_retries: 5,
        first_backoff: 500,
        strategy: BackoffTest.ZeroStrategy,
@@ -49,7 +49,7 @@ defmodule BackoffTest do
   end
 
   test "can override choosing next interval with options" do
-    {res, state} =
+    {res, {_opts, state}} =
       [max_retries: 5,
        first_backoff: 500,
        strategy: BackoffTest.TestStrategy,
@@ -87,7 +87,7 @@ defmodule BackoffTest do
   end
 
   test "success callback can update meta state" do
-    assert {_res, state} =
+    assert {_res, {_opts, state}} =
       [debug: true,
        first_backoff: 0,
        max_retries: 5,
@@ -101,7 +101,7 @@ defmodule BackoffTest do
   end
 
   test "error callback can update meta state" do
-    assert {_res, state} =
+    assert {_res, {_opts, state}} =
       [debug: true,
        first_backoff: 0,
        max_retries: 5,
@@ -127,7 +127,7 @@ defmodule BackoffTest do
   test "can do one attempt at a time" do
     backoff = Backoff.new(single: true, first_backoff: 5, max_retries: 5)
 
-    {res, state} = Backoff.one(backoff, fn -> {:error, :dang} end)
+    {res, {_opts, state}} = Backoff.one(backoff, fn -> {:error, :dang} end)
     assert {:error, :dang} = res
     assert %{attempts: 1, backoff: 10, prev_backoff: 5} = state
   end
