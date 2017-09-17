@@ -18,6 +18,7 @@ defmodule Backoff do
                   {{:error, any} | any, meta_t}),
     strategy: module,
     strategy_opts: map,
+    single: boolean,
   }
 
   @typedoc """
@@ -44,6 +45,7 @@ defmodule Backoff do
       after_request: &default_after/3,
       strategy: Backoff.Strategy.Exponential,
       strategy_opts: %{},
+      single: false,
     ]
 
     opts =
@@ -71,7 +73,7 @@ defmodule Backoff do
 
   @spec one({opts_t, state_t}, (... -> any), [any])
   :: {any, state_t}
-  def one({opts, state}, func, args) do
+  def one({opts, state}, func, args \\ []) do
     {opts, state}
     |> do_befores()
     |> case do
@@ -91,7 +93,7 @@ defmodule Backoff do
           inspect(func), " failed: ", inspect(err), ". ",
           "Sleeping for ", to_string(next_wait_ms), " ms"
         ])
-        Process.sleep(next_wait_ms)
+        handle_sleep(next_wait_ms, opts)
 
         if retry?(state, opts) do
           one({opts, %{state |
@@ -105,7 +107,11 @@ defmodule Backoff do
             "Giving up ", inspect(func),
             " after ", to_string(attempts), " attempts.",
           ])
-          {{:error, err}, state}
+          {{:error, err}, %{state |
+            attempts: attempts + 1,
+            prev_backoff: backoff,
+            backoff: next_wait_ms,
+          }}
         end
       {res, new_meta} ->
         {res, update_meta(state, new_meta)}
@@ -113,8 +119,14 @@ defmodule Backoff do
   end
 
   @spec finish({any, state_t}, opts_t) :: any | {any, state_t}
-  def finish({res, _state}, %{debug: false}), do: res
   def finish({res, state}, %{debug: true}), do: {res, state}
+  def finish({res, state}, %{single: true}), do: {res, state}
+  def finish({res, _state}, %{debug: false}), do: res
+
+  defp handle_sleep(next_wait_ms, %{single: true}) do
+    Process.sleep(next_wait_ms)
+  end
+  defp handle_sleep(_ms, _opts), do: nil
 
   defp do_befores({opts, state}) do
     {res, next_state} = opts.before_request.(state, opts)
@@ -132,8 +144,9 @@ defmodule Backoff do
 
   defp default_after(res, state, _opts), do: {res, state.meta}
 
+  defp retry?(_s, %{single: true}), do: false
   defp retry?(%{attempts: attempts}, %{max_retries: max_retries}) do
-    attempts < max_retries
+    attempts + 1 < max_retries
   end
 
   defp update_meta(state, nil), do: state
