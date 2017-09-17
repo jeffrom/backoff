@@ -120,4 +120,16 @@ defmodule Backoff.Strategy.WindowTest do
 
     assert {:ok, :cool} = res
   end
+
+  test "checker can be overridden" do
+    {strategy_opts, strat} = Window.init(%{strategy_opts: %{
+      checker: fn (_res, state, _opts) -> {{:ok, :cool}, state} end,
+    }})
+    opts = %{strategy_opts: strategy_opts}
+
+    {res, _next_state} = Window.on_response(
+      {:ok, :notcool}, %{strategy_data: strat}, opts)
+
+    assert {:ok, :cool} = res
+  end
 end
