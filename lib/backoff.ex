@@ -14,10 +14,8 @@ defmodule Backoff do
     max_retries: non_neg_integer,
     before_request: ((state_t, opts_t) ->
                       {{:error, any} | any, meta_t}),
-    on_success: ((any, state_t, opts_t) ->
+    after_request: ((any, state_t, opts_t) ->
                   {{:error, any} | any, meta_t}),
-    on_error: (({:error, any}, state_t, opts_t) ->
-                {{:error, any} | any, meta_t}),
     strategy: module,
     strategy_opts: map,
   }
@@ -43,8 +41,7 @@ defmodule Backoff do
       max_backoff: 3000,
       max_retries: 25,
       before_request: &default_before/2,
-      on_success: &default_after/3,
-      on_error: &default_after/3,
+      after_request: &default_after/3,
       strategy: Backoff.Strategy.Exponential,
       strategy_opts: %{},
     ]
@@ -72,7 +69,7 @@ defmodule Backoff do
     |> finish(opts)
   end
 
-  @spec one({opts_t, state_t}, (... -> {any, state_t}), [any])
+  @spec one({opts_t, state_t}, (... -> any), [any])
   :: {any, state_t}
   def one({opts, state}, func, args) do
     {opts, state}
@@ -127,11 +124,8 @@ defmodule Backoff do
   defp do_afters({:done, _} = res, _opts, state) do
     {res, state.meta}
   end
-  defp do_afters({:error, err}, %{on_error: on_error} = opts, state) do
-    on_error.({:error, err}, state, opts)
-  end
-  defp do_afters(res, %{on_success: on_success} = opts, state) do
-    on_success.(res, state, opts)
+  defp do_afters(res, %{after_request: after_request} = opts, state) do
+    after_request.(res, state, opts)
   end
 
   defp default_before(state, _opts), do: {:ok, state}

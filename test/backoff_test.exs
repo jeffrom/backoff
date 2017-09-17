@@ -62,11 +62,11 @@ defmodule BackoffTest do
     assert %{strategy_data: %{val: :niiice}} = state
   end
 
-  test "can override on_success function" do
+  test "can override after_request function when successful" do
     res =
       [first_backoff: 0,
        max_retries: 5,
-       on_success: fn({:ok, :nice}, _s, _opts) ->
+       after_request: fn({:ok, :nice}, _s, _opts) ->
          {{:error, :cool}, nil} end]
       |> Backoff.new()
       |> Backoff.run(fn -> {:ok, :nice} end, [])
@@ -74,11 +74,11 @@ defmodule BackoffTest do
     assert res == {:error, :cool}
   end
 
-  test "can override on_error function" do
+  test "can override after_request function when erroring" do
     res =
       [first_backoff: 0,
        max_retries: 5,
-       on_error: fn({:error, :cool}, _s, _opts) ->
+       after_request: fn({:error, :cool}, _s, _opts) ->
          {{:ok, :nice}, nil} end]
       |> Backoff.new()
       |> Backoff.run(fn -> {:error, :cool} end, [])
@@ -91,7 +91,7 @@ defmodule BackoffTest do
       [debug: true,
        first_backoff: 0,
        max_retries: 5,
-       on_success: fn({:ok, :nice}, _state, _opts) ->
+       after_request: fn({:ok, :nice}, _state, _opts) ->
          {{:error, :cool}, %{cool: :wow}}
        end]
       |> Backoff.new()
@@ -105,7 +105,7 @@ defmodule BackoffTest do
       [debug: true,
        first_backoff: 0,
        max_retries: 5,
-       on_error: fn({:error, :cool}, _state, _opts) ->
+       after_request: fn({:error, :cool}, _state, _opts) ->
          {{:ok, :nice}, %{cool: :wow}}
        end]
       |> Backoff.new()
