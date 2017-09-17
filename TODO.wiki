@@ -1,0 +1,24 @@
+= TODO =
+
+- [X] convert on_success / on_error to after_request
+- [X] fix single run mode
+- [X] general arg order
+- [X] test checker overrides
+- [ ] Backoff.one/3 needs to be able to be called again with the result of a
+      previous call
+    - currently returns {res, state}
+    - should be {res, {opts, state}}
+
+- [ ] test each strategy through the backoff module instead of their own
+- [ ] integration test with httpoison & httpotion / short backoff intervals
+- [ ] docs
+- [ ] release
+- [ ] audit names
+- [ ] option to not call the function, just return the state
+- [ ] publish release task
+- [ ] state, opts argument order
+- [ ] is meta neccesary? redundant with strategy_data
+- [ ] more tests via backoff module instead of unit testing modules separately
+- [ ] opts to pass state without applying anything, let the caller do it
+- [ ] do block api: `with_backoff`
+
