@@ -123,4 +123,12 @@ defmodule BackoffTest do
        |> Backoff.new()
        |> Backoff.run(fn -> {:ok, :cool} end)
   end
+
+  test "can do one attempt at a time" do
+    backoff = Backoff.new(single: true, first_backoff: 5, max_retries: 5)
+
+    {res, state} = Backoff.one(backoff, fn -> {:error, :dang} end)
+    assert {:error, :dang} = res
+    assert %{attempts: 1, backoff: 10, prev_backoff: 5} = state
+  end
 end
