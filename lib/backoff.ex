@@ -94,15 +94,15 @@ defmodule Backoff do
         ])
         handle_sleep(next_wait_ms, opts)
 
+        ns = next_state(state, next_wait_ms, strategy_data)
         if retry?(state, opts) do
-          ns = next_state(state, next_wait_ms, strategy_data)
           one({opts, ns}, func, args)
         else
           Logger.debug([
             "Giving up ", inspect(func),
             " after ", to_string(attempts), " attempts.",
           ])
-          {{:error, err}, next_state(state, next_wait_ms, strategy_data)}
+          {{:error, err}, ns}
         end
       {res, new_meta} ->
         {res, update_meta(state, new_meta)}
