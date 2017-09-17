@@ -85,7 +85,7 @@ defmodule Backoff do
       {{:done, res}, new_meta} -> {res, new_meta}
       {{:error, err}, new_meta} ->
         state = update_meta(state, new_meta)
-        %{attempts: attempts, backoff: backoff} = state
+        %{attempts: attempts} = state
 
         {next_backoff, strategy_data} = opts.strategy.choose(state, opts)
         next_wait_ms = min(next_backoff, opts.max_backoff)
@@ -96,22 +96,14 @@ defmodule Backoff do
         handle_sleep(next_wait_ms, opts)
 
         if retry?(state, opts) do
-          one({opts, %{state |
-            attempts: attempts + 1,
-            prev_backoff: backoff,
-            backoff: next_wait_ms,
-            strategy_data: strategy_data
-          }}, func, args)
+          ns = next_state(state, next_wait_ms, strategy_data)
+          one({opts, ns}, func, args)
         else
           Logger.debug([
             "Giving up ", inspect(func),
             " after ", to_string(attempts), " attempts.",
           ])
-          {{:error, err}, %{state |
-            attempts: attempts + 1,
-            prev_backoff: backoff,
-            backoff: next_wait_ms,
-          }}
+          {{:error, err}, next_state(state, next_wait_ms, strategy_data)}
         end
       {res, new_meta} ->
         {res, update_meta(state, new_meta)}
@@ -152,5 +144,15 @@ defmodule Backoff do
   defp update_meta(state, nil), do: state
   defp update_meta(state, new_meta) do
     %{state | meta: Map.merge(state.meta, new_meta)}
+  end
+
+  defp next_state(state, next_wait_ms, strategy_data) do
+    %{attempts: attempts, backoff: backoff} = state
+    %{state |
+      attempts: attempts + 1,
+      prev_backoff: backoff,
+      backoff: next_wait_ms,
+      strategy_data: strategy_data,
+    }
   end
 end
