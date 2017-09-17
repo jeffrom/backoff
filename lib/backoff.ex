@@ -45,7 +45,6 @@ defmodule Backoff do
       after_request: &default_after/3,
       strategy: Backoff.Strategy.Exponential,
       strategy_opts: %{},
-      single: false,
     ]
 
     opts =
@@ -66,7 +65,7 @@ defmodule Backoff do
 
   @spec run({opts_t, state_t}, (... -> any), [any]) :: {:error, any} | any
   def run({opts, state}, func, args \\ []) do
-    {opts, state}
+    {Map.put(opts, :single, false), state}
     |> one(func, args)
     |> finish(opts)
   end
@@ -115,7 +114,7 @@ defmodule Backoff do
   def finish({res, state}, %{single: true}), do: {res, state}
   def finish({res, _state}, %{debug: false}), do: res
 
-  defp handle_sleep(next_wait_ms, %{single: true}) do
+  defp handle_sleep(next_wait_ms, %{single: false}) do
     Process.sleep(next_wait_ms)
   end
   defp handle_sleep(_ms, _opts), do: nil
@@ -136,10 +135,12 @@ defmodule Backoff do
 
   defp default_after(res, state, _opts), do: {res, state.meta}
 
-  defp retry?(_s, %{single: true}), do: false
-  defp retry?(%{attempts: attempts}, %{max_retries: max_retries}) do
+  defp retry?(%{attempts: attempts},
+              %{single: false, max_retries: max_retries})
+  do
     attempts + 1 < max_retries
   end
+  defp retry?(_s, _opts), do: false
 
   defp update_meta(state, nil), do: state
   defp update_meta(state, new_meta) do
