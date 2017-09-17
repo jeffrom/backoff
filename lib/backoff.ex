@@ -95,7 +95,6 @@ defmodule Backoff do
         ])
         handle_sleep(next_wait_ms, opts)
 
-        IO.inspect opts
         if retry?(state, opts) do
           one({opts, %{state |
             attempts: attempts + 1,
