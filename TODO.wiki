@@ -4,7 +4,7 @@
 - [X] fix single run mode
 - [X] general arg order
 - [X] test checker overrides
-- [ ] Backoff.one/3 needs to be able to be called again with the result of a
+- [X] Backoff.one/3 needs to be able to be called again with the result of a
       previous call
     - currently returns {res, state}
     - should be {res, {opts, state}}
