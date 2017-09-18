@@ -131,4 +131,42 @@ defmodule BackoffTest do
     assert {:error, :dang} = res
     assert %{attempts: 1, backoff: 10, prev_backoff: 5} = state
   end
+
+  describe "exponential strategy" do
+    test "works in successful case" do
+      b = Backoff.new(strategy: Backoff.Strategy.Exponential)
+      assert {:ok, :cool} = Backoff.run(b, fn -> {:ok, :cool} end)
+    end
+
+    test "works in error case" do
+      b = Backoff.new(strategy: Backoff.Strategy.Exponential, max_retries: 3,
+                      first_backoff: 1, debug: true)
+      assert {{:error, :sick}, {_opts, state}} = Backoff.run(b, fn ->
+        {:error, :sick}
+      end)
+
+      assert %{attempts: 3, backoff: 8, prev_backoff: 4} = state
+    end
+  end
+
+  describe "define strategy" do
+    test "works in successful case" do
+      b = Backoff.new(strategy: Backoff.Strategy.Define, strategy_opts: %{
+        values: [0, 1, 2],
+      })
+      assert {:ok, :cool} = Backoff.run(b, fn -> {:ok, :cool} end)
+    end
+
+    test "works in error case" do
+      b = Backoff.new(strategy: Backoff.Strategy.Define, strategy_opts: %{
+        values: [0, 1, 2],
+      }, max_retries: 3, debug: true)
+
+      assert {{:error, :sick}, {_opts, state}} = Backoff.run(b, fn ->
+        {:error, :sick}
+      end)
+
+      assert %{attempts: 3, backoff: 2, prev_backoff: 1} = state
+    end
+  end
 end

@@ -20,6 +20,6 @@ defmodule Backoff.Strategy.Define do
   @spec choose(Backoff.state_t, Backoff.opts_t)
   :: {non_neg_integer, any}
   def choose(%{attempts: attempts, strategy_data: choices}, _opts) do
-    {Enum.at(choices, attempts) || List.last(choices), nil}
+    {Enum.at(choices, attempts) || List.last(choices), choices}
   end
 end
