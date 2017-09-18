@@ -162,11 +162,17 @@ defmodule BackoffTest do
         values: [0, 1, 2],
       }, max_retries: 3, debug: true)
 
-      assert {{:error, :sick}, {_opts, state}} = Backoff.run(b, fn ->
-        {:error, :sick}
-      end)
+      fun = fn -> {:error, :sick} end
 
-      assert %{attempts: 3, backoff: 2, prev_backoff: 1} = state
+      assert {{:error, :sick}, {_opts, state} = b2} = Backoff.one(b, fun)
+      assert %{attempts: 1, backoff: 0} = state
+
+      assert {{:error, :sick}, {opts, next_state}} = Backoff.one(b2, fun)
+      assert %{attempts: 2, backoff: 1, prev_backoff: 0} = next_state
+
+      b3 = {opts, next_state}
+      assert {{:error, :sick}, {_opts, final_state}} = Backoff.one(b3, fun)
+      assert %{attempts: 3, backoff: 2, prev_backoff: 1} = final_state
     end
   end
 end
